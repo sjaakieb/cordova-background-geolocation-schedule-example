@@ -23,7 +23,7 @@ var app = {
     },
 
     onDeviceReady: function () {
-        this.receivedEvent('deviceready');        
+        this.receivedEvent('deviceready');
         var bgGeo = window.BackgroundGeolocation;
 
         var callbackFn = function (location, taskId) {
@@ -42,14 +42,49 @@ var app = {
         // Listen to location event
         bgGeo.on('location', callbackFn, failureFn);
 
+
+        var fields =
+            [`"Latitude":<%=latitude%>`
+                , `"Longitude":<%=longitude%>`
+                , `"Altitude":<%=altitude%>`
+                , `"MeasuredTimeUTC":"<%= timestamp%>"`
+                , `"Direction":<%= heading %>`
+                , `"BatteryLevel":<%=battery.level%>`
+                , `"Speed":<%=speed%>`
+                , `"Accuracy":<%=accuracy%>`
+                , `"AltitudeAccuracy":<%=altitude_accuracy%>`
+                , `"UUID":"<%=uuid%>"`
+                , `"Event":"<%=event%>"`
+                , `"Odometer":<%=odometer%>`
+                , `"ActivityType":"<%=activity.type%>"`
+                , `"ActivityConfidence":<%=activity.confidence%>`
+                , `"BatteryIsCharging":<%=battery.is_charging%>`
+            ];
+
+        var template = "{" + fields.join(",") + "}";
+
+        var extras = {
+            RaceNumber: 123456,
+            StartNumber: "1",
+            DevicePlatform: "TEST",
+            DeviceManufacturer: "TEST",
+            DeviceModel: "TEST",
+        };
+
+        var timestamp = "" + Date.now();
+
         bgGeo.configure({
             // Geolocation config
             desiredAccuracy: 0,
             stationaryRadius: 25,
             activityRecognitionInterval: 10000,
+            extras: extras,
+            headers: { timestamp: timestamp },
             stopTimeout: 5,
             debug: true,  // <-- Debug sounds & notifications.
             stopOnTerminate: false,
+            locationTemplate: template,
+            url: "https://protected-hollows-45949.herokuapp.com/api/eventBus",
             startOnBoot: true,
             foregroundService: true,
             autoSync: true,
@@ -62,9 +97,20 @@ var app = {
                 });
             }
         });
+
+        window.window.setInterval(function () {
+            var timestamp = "" + Date.now();
+            bgGeo.setConfig({
+                headers: { timestamp: timestamp }
+            }, function (state) {
+                console.log('set config success', state);
+            }, function (error) {
+                console.log('failed to setConfig', error);
+            });
+        }, 60000);
     },
 
-    receivedEvent: function(id) {
+    receivedEvent: function (id) {
         var parentElement = document.getElementById(id);
         var listeningElement = parentElement.querySelector('.listening');
         var receivedElement = parentElement.querySelector('.received');
